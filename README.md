@@ -20,3 +20,4 @@ clickops). Currently targets: **OCI** (us-chicago-1, free-tier-only).
    encrypted at rest by the runner disk.
 3. Never commit `*.tfstate*`, `.terraform/`, or any OCID-bearing secrets.
    OCI API key lives outside the repo (runner env / /home/cloud/.oci).
+# ctf
