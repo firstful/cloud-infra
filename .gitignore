@@ -1,0 +1,11 @@
+# OpenTofu working files (never commit)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+tfplan
+tfplan.*
+
+# real values only (template is terraform.tfvars.example)
+providers/oci/terraform.tfvars

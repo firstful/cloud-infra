@@ -1,0 +1,95 @@
+name: tofu
+
+on:
+  push:
+    branches: [main]
+    paths: ['providers/**']
+  pull_request:
+    paths: ['providers/**']
+  workflow_dispatch:
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "0"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-tofu@v1
+        with:
+          tofu_version: v1.12.6
+
+      - name: fmt
+        run: tofu -chdir=providers/oci fmt -check -recursive
+
+      - name: init (no backend, offline-ish)
+        run: tofu -chdir=providers/oci init -backend=false
+
+      - name: validate
+        run: tofu -chdir=providers/oci validate
+
+  plan:
+    needs: check
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: oci-plan   # requires manual approval if configured as gated
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-tofu@v1
+        with:
+          tofu_version: v1.12.6
+
+      - name: init + plan
+        env:
+          TF_VAR_tenancy_ocid:        ${{ secrets.OCI_TENANCY_OCID }}
+          TF_VAR_user_ocid:           ${{ secrets.OCI_USER_OCID }}
+          TF_VAR_fingerprint:         ${{ secrets.OCI_FINGERPRINT }}
+          TF_VAR_private_key_path:    /tmp/oci_api_key.pem
+          TF_VAR_region:              ${{ secrets.OCI_REGION }}
+          TF_VAR_compartment_ocid:    ${{ secrets.OCI_COMPARTMENT_OCID }}
+          TF_VAR_availability_domain: ${{ secrets.OCI_AVAILABILITY_DOMAIN }}
+          TF_VAR_ssh_public_key:      ${{ secrets.OCI_SSH_PUBLIC_KEY }}
+        run: |
+          echo "${{ secrets.OCI_API_KEY }}" > /tmp/oci_api_key.pem
+          chmod 600 /tmp/oci_api_key.pem
+          tofu -chdir=providers/oci init -backend=false
+          tofu -chdir=providers/oci plan -lock=false
+          rm -f /tmp/oci_api_key.pem
+
+  # apply is MANUAL ONLY (workflow_dispatch on main, gated by environment approval).
+  # No auto-apply: zero-spend tenancy, every change gets human eyes.
+  apply:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: oci-apply   # REQUIRED: configure with required reviewer = reeds
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-tofu@v1
+        with:
+          tofu_version: v1.12.6
+
+      - name: init + apply
+        env:
+          TF_VAR_tenancy_ocid:        ${{ secrets.OCI_TENANCY_OCID }}
+          TF_VAR_user_ocid:           ${{ secrets.OCI_USER_OCID }}
+          TF_VAR_fingerprint:         ${{ secrets.OCI_FINGERPRINT }}
+          TF_VAR_private_key_path:    /tmp/oci_api_key.pem
+          TF_VAR_region:              ${{ secrets.OCI_REGION }}
+          TF_VAR_compartment_ocid:    ${{ secrets.OCI_COMPARTMENT_OCID }}
+          TF_VAR_availability_domain: ${{ secrets.OCI_AVAILABILITY_DOMAIN }}
+          TF_VAR_ssh_public_key:      ${{ secrets.OCI_SSH_PUBLIC_KEY }}
+        run: |
+          echo "${{ secrets.OCI_API_KEY }}" > /tmp/oci_api_key.pem
+          chmod 600 /tmp/oci_api_key.pem
+          tofu -chdir=providers/oci init -backend=false
+          tofu -chdir=providers/oci apply -auto-approve -lock=false
+          rm -f /tmp/oci_api_key.pem

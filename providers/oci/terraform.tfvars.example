@@ -1,0 +1,11 @@
+# terraform.tfvars — REAL VALUES live in ../terraform.tfvars (gitignored) or
+# runner env. This file documents required keys; CI fails fast if unset.
+
+# tenancy_ocid         = "ocid1.tenancy.oc1..REDACTED"
+# user_ocid            = "ocid1.user.oc1..REDACTED"
+# fingerprint          = "52:1d:af:c0:65:0d:ca:2e:52:a2:fc:fa:58:a5:df:39"
+# private_key_path     = "/home/cloud/.oci/oci_api_key.pem"
+# region               = "us-chicago-1"
+# compartment_ocid     = "ocid1.tenancy.oc1..REDACTED"  # root until dedicated compartment
+# availability_domain  = "xxxx:US-CHICAGO-1-AD-1"
+# ssh_public_key       = "ssh-ed25519 AAAA... hub bootstrap key"
