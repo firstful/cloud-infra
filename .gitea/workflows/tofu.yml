@@ -23,8 +23,11 @@ jobs:
       - name: fmt
         run: tofu -chdir=providers/oci fmt -check -recursive
 
-      - name: init (no backend, offline-ish)
-        run: tofu -chdir=providers/oci init -backend=false
+      - name: init (with remote state backend)
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.OCI_TFSTATE_S3_ACCESS }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
+        run: tofu -chdir=providers/oci init -input=false
 
       - name: validate
         run: tofu -chdir=providers/oci validate
@@ -52,8 +55,10 @@ jobs:
         run: |
           echo "${{ secrets.OCI_API_KEY }}" > /tmp/oci_api_key.pem
           chmod 600 /tmp/oci_api_key.pem
-          tofu -chdir=providers/oci init -backend=false
-          tofu -chdir=providers/oci plan -lock=false
+          export AWS_ACCESS_KEY_ID="${{ secrets.OCI_TFSTATE_S3_ACCESS }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.OCI_TFSTATE_S3_SECRET }}"
+          tofu -chdir=providers/oci init -input=false
+          tofu -chdir=providers/oci plan -lock=false -input=false
           rm -f /tmp/oci_api_key.pem
 
   # apply is MANUAL ONLY (workflow_dispatch on main, gated by environment approval).
@@ -81,6 +86,8 @@ jobs:
         run: |
           echo "${{ secrets.OCI_API_KEY }}" > /tmp/oci_api_key.pem
           chmod 600 /tmp/oci_api_key.pem
-          tofu -chdir=providers/oci init -backend=false
-          tofu -chdir=providers/oci apply -auto-approve -lock=false
+          export AWS_ACCESS_KEY_ID="${{ secrets.OCI_TFSTATE_S3_ACCESS }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.OCI_TFSTATE_S3_SECRET }}"
+          tofu -chdir=providers/oci init -input=false
+          tofu -chdir=providers/oci apply -auto-approve -lock=false -input=false
           rm -f /tmp/oci_api_key.pem
