@@ -128,6 +128,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
           TF_VAR_cf_api_token:   ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
+          if [ -z "$TF_VAR_cf_api_token" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN is not set - skipping Cloudflare plan"
+            exit 0
+          fi
           tofu -chdir=providers/cloudflare init -input=false
           tofu -chdir=providers/cloudflare plan -lock=false -input=false
 
@@ -147,5 +151,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
           TF_VAR_cf_api_token:   ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
+          if [ -z "$TF_VAR_cf_api_token" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN must be set before applying"
+            exit 1
+          fi
           tofu -chdir=providers/cloudflare init -input=false
           tofu -chdir=providers/cloudflare apply -auto-approve -lock=false -input=false
