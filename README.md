@@ -1,11 +1,13 @@
 # cloud-infra
 
 IaC for Reed's cloud provider accounts. **OpenTofu only** (declarative, no
-clickops). Currently targets: **OCI** (us-chicago-1, free-tier-only).
+clickops). Currently targets: **OCI** (us-chicago-1, free-tier-only) and
+**Cloudflare Zero Trust** (Access apps + policies for `*.ffilt.us`).
 
 ## Layout
 
 - `providers/oci/` — the OCI tenancy root module (VCN, subnet, instance, etc.)
+- `providers/cloudflare/` — Cloudflare Access apps/policies (see its README)
 - `.gitea/workflows/tofu.yml` — CI: fmt + validate + plan on PR, apply on main (manual gate)
 
 ## Rules

@@ -91,3 +91,61 @@ jobs:
           tofu -chdir=providers/oci init -input=false
           tofu -chdir=providers/oci apply -auto-approve -lock=false -input=false
           rm -f /tmp/oci_api_key.pem
+
+  # ---- Cloudflare Access (providers/cloudflare) ----
+  check-cloudflare:
+    runs-on: ubuntu-latest
+    container:
+      image: 192.168.1.2:3000/reeds/ci-tofu:1.12.6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: fmt
+        run: tofu -chdir=providers/cloudflare fmt -check -recursive
+
+      - name: init (remote state backend)
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.OCI_TFSTATE_S3_ACCESS }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
+        run: tofu -chdir=providers/cloudflare init -input=false
+
+      - name: validate
+        run: tofu -chdir=providers/cloudflare validate
+
+  plan-cloudflare:
+    needs: [check, check-cloudflare]
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: cf-plan
+    container:
+      image: 192.168.1.2:3000/reeds/ci-tofu:1.12.6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: init + plan
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.OCI_TFSTATE_S3_ACCESS }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
+          TF_VAR_cf_api_token:   ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          tofu -chdir=providers/cloudflare init -input=false
+          tofu -chdir=providers/cloudflare plan -lock=false -input=false
+
+  apply-cloudflare:
+    needs: [check, check-cloudflare]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: cf-apply   # REQUIRED: configure with required reviewer = reeds
+    container:
+      image: 192.168.1.2:3000/reeds/ci-tofu:1.12.6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: init + apply
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.OCI_TFSTATE_S3_ACCESS }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
+          TF_VAR_cf_api_token:   ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          tofu -chdir=providers/cloudflare init -input=false
+          tofu -chdir=providers/cloudflare apply -auto-approve -lock=false -input=false
