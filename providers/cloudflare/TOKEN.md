@@ -16,23 +16,31 @@ Zone resources — scope to both zones above:
 
 | Permission | Why |
 |---|---|
-| `Zone:Zones Read` | enumerate zones |
-| `Zone:DNS Read` + `Zone:DNS Edit` | `cloudflare_record` (23 records) |
-| `Zone:Zone Settings Read` + `Zone:Zone Settings Edit` | verify and manage non-default SSL/cache settings |
-| `Zone:Rulesets Read` + `Zone:Rulesets Edit` | WAF / rate-limit / redirect rulesets |
-| `Zone:Workers Routes Read` + `Zone:Workers Routes Edit` | explicit worker routes |
+| `Zone Read` | enumerate zones |
+| `DNS Read` + `DNS Write` | `cloudflare_record` (23 records) |
+| `Zone Settings Read` + `Zone Settings Write` | verify and manage non-default SSL/cache settings |
+| `Workers Routes Read` + `Workers Routes Write` | explicit worker routes |
+
+Rulesets have **no zone-level permission group** in the token UI. Use the
+account-scoped `Account Rulesets Read` + `Account Rulesets Write` (accepts
+both `/accounts/{id}/rulesets` and `/zones/{id}/rulesets`). Product-specific
+equivalents such as `Zone WAF Read/Write`, `Zone Transform Rules Read/Write`
+(UI: **Transform Rules** under Zone permissions; account-scoped
+`Transform Rules` is a separate group), `Dynamic URL Redirects Read/Write`
+and `Mass URL Redirects Read/Write` also work for their own rulesets, but
+`Account Rulesets` is the single broad one.
 
 Account resources — scope to the account above:
 
 | Permission | Why |
 |---|---|
-| `Account:Cloudflare Tunnel Read` + `Edit` | tunnel + ingress config |
-| `Account:Cloudflare Access Read` + `Edit` (Apps and Policies) | 13 apps / ~25 policies |
-| `Account:Workers Scripts Read` + `Edit` | `email-ingest` worker |
-| `Account:Workers KV Storage Read` + `Edit` | verify/manage KV namespaces |
-| `Account:R2 Read` + `Edit` | `ffilt-us-email-raw` bucket |
-| `Account:Queues Read` + `Edit` | `email-ingest-queue` + consumer |
-| `Account:Email Routing Read` + `Edit` | catch-all rule |
+| `Cloudflare Tunnel Read` + `Write` | tunnel + ingress config |
+| `Access: Apps and Policies Read` + `Write` | 13 apps / ~25 policies |
+| `Workers Scripts Read` + `Write` | `email-ingest` worker |
+| `Workers KV Storage Read` + `Write` | verify/manage KV namespaces |
+| `Workers R2 Storage Read` + `Write` | `ffilt-us-email-raw` bucket |
+| `Queues Read` + `Write` | `email-ingest-queue` + consumer |
+| `Email Routing Rules Read` + `Write` | catch-all rule |
 
 A single token with all of the above is broader than any current token. If
 least privilege is preferred, split into two CI secrets (zone/DNS/settings vs
