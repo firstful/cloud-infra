@@ -1,0 +1,42 @@
+name: drift
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "0"
+
+jobs:
+  cloudflare:
+    runs-on: ubuntu-latest
+    container:
+      image: 192.168.1.2:3000/reeds/ci-tofu:1.12.6
+    steps:
+      - uses: actions/checkout@v4
+      - name: plan -detailed-exitcode
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.OCI_TFSTATE_S3_ACCESS }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_TFSTATE_S3_SECRET }}
+          TF_VAR_cf_api_token:   ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TF_VAR_cf_api_token" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN is not set - skipping drift check"
+            exit 0
+          fi
+          tofu -chdir=providers/cloudflare init -input=false
+          set +e
+          tofu -chdir=providers/cloudflare plan -lock=false -input=false -detailed-exitcode
+          rc=$?
+          set -e
+          if [ "$rc" -eq 2 ]; then
+            echo "::error::Cloudflare drift detected (non-empty plan)"
+            exit 1
+          fi
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::Cloudflare plan failed with exit code $rc"
+            exit "$rc"
+          fi
+          echo "No Cloudflare drift detected"

@@ -1,16 +1,21 @@
-# Cloudflare Access — OpenTofu
+# Cloudflare — OpenTofu
 
-Declarative source of truth for `*.ffilt.us` Access **applications** and
-**policies**. Adopted 2026-11-19 after the `obsidian.ffilt.us` clickops bypass
-incident.
+Single declarative source of truth for the Sutliff Cloudflare footprint:
+Access apps/policies, DNS for both zones, tunnel ingress, the email stack
+(Worker + R2 + Queue + Email Routing), and — once readable — zone settings and
+rulesets. Access was adopted 2026-11-19 after the `obsidian.ffilt.us` clickops
+bypass incident; the rest was added 2026-11-23 from the read-only audit in
+`docs/CLOUDFLARE-INVENTORY.md`.
 
 ## State and credentials
 
 - State: same OCI Object Storage bucket as `providers/oci`, key
   `cloudflare/terraform.tfstate`. S3 creds come from
   `OCI_TFSTATE_S3_ACCESS` / `OCI_TFSTATE_S3_SECRET` CI secrets.
-- Cloudflare token: Gitea repo secret `CLOUDFLARE_API_TOKEN`, needs
-  **Access: Apps and Policies Read + Write**. Do not reuse the cf-manager key.
+- Cloudflare token: Gitea repo secret `CLOUDFLARE_API_TOKEN`. The exact
+  permissions for full management and verification are in `TOKEN.md`; the
+  current fragmented tokens are **not** sufficient. Do not reuse the
+  cf-manager key.
 - Apply is manual-only (`workflow_dispatch`) in `.gitea/workflows/tofu.yml`.
   PRs get fmt/validate/plan.
 
@@ -19,17 +24,36 @@ incident.
 | File | Contents |
 |---|---|
 | `main.tf` | provider, backend |
-| `apps.tf` | 14 Access applications |
-| `policies.tf` | 26 unique policies (one shared by obsidian + wildcard) |
-| `imports.tf` | one-time adoption IDs, safe to keep |
+| `locals.tf` | zone IDs |
+| `apps.tf` | Access applications |
+| `policies.tf` | Access policies |
+| `imports.tf` | Access adoption IDs, safe to keep |
 | `service-tokens.tf` | IDs of existing tokens referenced by policies (tokens remain cf-manager-owned) |
+| `dns.tf` / `imports_dns.tf` | 23 DNS records across both zones, with import IDs |
+| `tunnel.tf` / `imports_extra.tf` | `Ffiltus` tunnel data source + ingress config |
+| `email.tf` | R2 bucket, Queue, Worker (source in `files/email-ingest/`), Email Routing rule |
+| `pending.tf` | Explicitly unmanaged items and why |
+| `TOKEN.md` | Exact token scopes needed |
+| `docs/CLOUDFLARE-INVENTORY.md` | Read-only audit behind this configuration |
+
+## Adoption gate
+
+With the new token in place, run `tofu plan` and confirm **zero** creates or
+deletes before applying. TXT values mirror the API's quoted representation;
+if the provider reports a text diff, reconcile it in config rather than
+applying a change. Never apply to `arewefucked.xyz` until its `status=pending`
+is understood.
 
 ## Ownership boundary
 
-- **IaC owns:** application settings and policy name/decision/precedence/rules.
+- **IaC owns:** application settings and policy name/decision/precedence/rules,
+  DNS records, tunnel ingress, the email stack, and (once verified) zone
+  settings and rulesets.
 - **cf-manager owns:** service token mint/rotate (`/mint`), token removal,
-  `/home-ip/sync`, tunnel health, user token minting.
-- **Not in state:** DNS records, tunnel ingress, WAF.
+  `/home-ip/sync`, tunnel health, user token minting, and R2 lifecycle rules
+  (no provider resource exists for those).
+- **Not in state:** the tunnel connector secret (write-only bootstrap), API
+  tokens, and dynamic per-device Access service tokens.
 
 `Home WAN IP bypass` policies (proto, gitea, jelly, wildcard) are rewritten by
 cf-manager every 15 min; those four resources ignore `include/exclude/require`

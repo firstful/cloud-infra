@@ -1,7 +1,7 @@
 variable "cf_api_token" {
   type        = string
   sensitive   = true
-  description = "Cloudflare API token with Access: Apps and Policies Read/Write (CI secret CLOUDFLARE_API_TOKEN)"
+  description = "Cloudflare IaC API token (CI secret CLOUDFLARE_API_TOKEN); see TOKEN.md for exact permissions"
 }
 
 variable "account_id" {
